@@ -1,0 +1,43 @@
+ ```mermaid
+ erDiagram
+     TENANTS ||--o{ PROFILES : "has"
+     TENANTS ||--o{ VILLAS : "owns"
+     TENANTS ||--o{ BOOKINGS : "owns"
+     TENANTS ||--o{ SETTINGS : "has"
+ 
+     PROFILES {
+         uuid id PK "references auth.users"
+         text email
+         text full_name
+         text phone
+         text role "enum: owner, admin, staff, pending, pending_owner"
+         timestamp created_at
+         uuid tenant_id FK "references TENANTS(id) NULLABLE"
+     }
+ 
+     VILLAS {
+         uuid id PK
+         text name
+         text location
+         uuid tenant_id FK "references TENANTS(id)"
+         ... 
+     }
+ 
+     BOOKINGS {
+         uuid id PK
+         uuid villa_id FK "references VILLAS(id)"
+         uuid tenant_id FK "references TENANTS(id)"
+         timestamp start_date
+         timestamp end_date
+         ... 
+     }
+ 
+     SETTINGS {
+         text key PK
+         text value
+         uuid tenant_id PK FK "references TENANTS(id)"
+     }
+ 
+     PROFILES ||--o{ VILLAS : "manages"
+     PROFILES ||--o{ BOOKINGS : "creates"
+ ```

@@ -388,6 +388,13 @@ const BookingDetailPage = () => {
 
   // Logic kiểm tra ngày để khóa nút Check-in
   const isCheckInDisabled = booking.check_in > todayStr;
+  
+  // Đơn quá hạn chưa xử lý (quá ngày check_out mà vẫn deposited hoặc checked_in)
+  const isOverdue = booking.check_out < todayStr && (booking.status === 'deposited' || booking.status === 'checked_in');
+  
+  // Đơn khách không đến (nếu hôm nay > check_out mà trạng thái deposited thì thường là no-show)
+  const isNoShowPotential = booking.check_out < todayStr && booking.status === 'deposited';
+
 
   return (
     <div className="max-w-[1100px] mx-auto space-y-6 md:space-y-8 animate-in fade-in duration-700 pb-16 md:pb-24 mt-6 md:mt-8">
@@ -426,6 +433,17 @@ const BookingDetailPage = () => {
         </div>
       )}
 
+      {isOverdue && !isEditing && (
+        <div className="p-4 md:p-5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 rounded-2xl flex items-start md:items-center gap-3 text-red-600 dark:text-red-400 mb-6 shadow-sm">
+          <AlertTriangle className="flex-shrink-0 mt-0.5 md:mt-0" size={24} />
+          <div>
+            <h3 className="font-bold text-sm md:text-base">⚠️ Đơn đặt này đã quá hạn!</h3>
+            <p className="text-xs md:text-sm mt-1 text-red-500 dark:text-red-400">Khách đã qua ngày trả phòng ({booking.check_out}) nhưng đơn vẫn chưa được hoàn thành. Vui lòng cập nhật trạng thái thực tế.</p>
+          </div>
+        </div>
+      )}
+
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         {/* ═══ LEFT COLUMN: Customer Info + Services ═══ */}
         <div className="lg:col-span-8 space-y-6 md:space-y-8">
@@ -441,7 +459,7 @@ const BookingDetailPage = () => {
               </div>
               {!isEditing && (
                 <div className="flex flex-wrap gap-2">
-                  {booking.status === 'deposited' && (
+                  {booking.status === 'deposited' && !isNoShowPotential && (
                     <div className="relative group flex-1 md:flex-none">
                       <button
                         onClick={() => updateStatus('checked_in')}
@@ -452,10 +470,40 @@ const BookingDetailPage = () => {
                       </button>
                     </div>
                   )}
+                  {booking.status === 'deposited' && isNoShowPotential && (
+                    <>
+                      <button
+                        onClick={() => { 
+                          showConfirm({
+                            title: 'Hoàn thành đơn?',
+                            message: 'Khách đã đến nhưng bạn quên thao tác? Xác nhận hoàn thành đơn để tính doanh thu.',
+                            onConfirm: () => updateStatus('completed')
+                          })
+                        }}
+                        disabled={updating}
+                        className="flex-1 md:flex-none bg-emerald-600 text-white px-5 md:px-6 py-2 md:py-2.5 rounded-xl font-semibold text-sm shadow-md dark:shadow-slate-950/30 hover:bg-emerald-700 active:scale-95 transition-all text-nowrap"
+                      >
+                        Đã phục vụ
+                      </button>
+                      <button
+                        onClick={() => { 
+                          showConfirm({
+                            title: 'Khách không đến?',
+                            message: 'Xác nhận khách không đến và hủy đơn này?',
+                            onConfirm: () => updateStatus('cancelled')
+                          })
+                        }}
+                        disabled={updating}
+                        className="flex-1 md:flex-none bg-red-600 text-white px-5 md:px-6 py-2 md:py-2.5 rounded-xl font-semibold text-sm shadow-md dark:shadow-slate-950/30 hover:bg-red-700 active:scale-95 transition-all text-nowrap"
+                      >
+                        Khách không đến
+                      </button>
+                    </>
+                  )}
                   {booking.status === 'checked_in' && (
                     <button onClick={() => updateStatus('completed')} disabled={updating} className="flex-1 md:flex-none bg-blue-600 text-white px-5 md:px-6 py-2 md:py-2.5 rounded-xl font-semibold text-sm shadow-md dark:shadow-slate-950/30 hover:bg-blue-700 active:scale-95">Check-out</button>
                   )}
-                  {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                  {booking.status !== 'completed' && booking.status !== 'cancelled' && !isNoShowPotential && (
                     <button
                       onClick={() => { 
                         showConfirm({
@@ -631,8 +679,18 @@ const BookingDetailPage = () => {
                 )}
               </div>
               <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-                <span className="text-sm font-medium text-slate-400 dark:text-slate-500">Cần thu thêm</span>
-                <span className="text-lg md:text-xl font-semibold text-orange-600 dark:text-orange-400">{(Number(isEditing ? editForm.total_amount : booking.total_amount) - Number(isEditing ? editForm.deposit_amount : booking.deposit_amount)).toLocaleString()}đ</span>
+                <span className="text-sm font-medium text-slate-400 dark:text-slate-500">
+                  {isEditing ? 'Cần thu thêm' : 
+                    booking.status === 'completed' ? 'Đã thu (khi trả phòng)' : 
+                    booking.status === 'cancelled' ? 'Chưa thu (Đã hủy)' : 'Cần thu thêm'}
+                </span>
+                <span className={`text-lg md:text-xl font-semibold ${
+                  !isEditing && booking.status === 'completed' ? 'text-emerald-600 dark:text-emerald-400' :
+                  !isEditing && booking.status === 'cancelled' ? 'text-slate-400 dark:text-slate-500 line-through opacity-70' :
+                  'text-orange-600 dark:text-orange-400'
+                }`}>
+                  {(Number(isEditing ? editForm.total_amount : booking.total_amount) - Number(isEditing ? editForm.deposit_amount : booking.deposit_amount)).toLocaleString()}đ
+                </span>
               </div>
             </div>
           </div>

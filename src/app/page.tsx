@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Villa, Booking } from '@/types';
-import { Users, DollarSign, CalendarCheck, TrendingUp, ChevronRight, ImageIcon, BarChart3, Loader2, Wallet } from 'lucide-react';
+import { Users, DollarSign, CalendarCheck, TrendingUp, ChevronRight, ChevronLeft, ImageIcon, BarChart3, Loader2, Wallet, AlertTriangle } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
@@ -15,6 +15,9 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [villas, setVillas] = useState<Villa[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [villaPage, setVillaPage] = useState(0);
+  const villasPerPage = 3;
+
   useEffect(() => {
     if (profile?.tenant_id) {
       fetchDashboardData();
@@ -45,6 +48,18 @@ const DashboardPage = () => {
       setLoading(false);
     }
   };
+
+  const overdueBookings = useMemo(() => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return allBookings.filter(booking => {
+      // Quá hạn check-in (Đã cọc nhưng qua ngày check-in)
+      const missedCheckIn = booking.status === 'deposited' && booking.check_in < todayStr;
+      // Quá hạn check-out (Đã cọc/Đang ở nhưng qua ngày check-out)
+      const missedCheckOut = (booking.status === 'deposited' || booking.status === 'checked_in') && booking.check_out < todayStr;
+      
+      return missedCheckIn || missedCheckOut;
+    });
+  }, [allBookings]);
 
   const totalExpectedRevenue = useMemo(() => {
     return allBookings.reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0);
@@ -137,6 +152,23 @@ const DashboardPage = () => {
 
   return (
     <div className="space-y-6 md:space-y-8 animate-in fade-in duration-700">
+      {overdueBookings.length > 0 && (
+        <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/50 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm flex items-start md:items-center justify-between gap-4 transition-all">
+          <div className="flex items-start md:items-center gap-3">
+            <div className="p-2.5 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 rounded-xl flex-shrink-0 mt-0.5 md:mt-0">
+              <AlertTriangle size={24} />
+            </div>
+            <div>
+              <h2 className="font-bold text-red-700 dark:text-red-400 text-base md:text-lg">Cảnh báo: Có {overdueBookings.length} đơn đặt quá hạn!</h2>
+              <p className="text-red-600 dark:text-red-300 text-sm mt-0.5">Bạn có các đơn đặt đã qua ngày nhận/trả phòng nhưng chưa cập nhật trạng thái.</p>
+            </div>
+          </div>
+          <Link href="/bookings" className="flex-shrink-0 bg-red-600 hover:bg-red-700 text-white px-4 py-2.5 rounded-xl text-sm font-semibold shadow-md active:scale-95 transition-all whitespace-nowrap">
+            Xử lý ngay
+          </Link>
+        </div>
+      )}
+
       <header className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm dark:shadow-slate-950/20 transition-all duration-300">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Báo cáo hôm nay 👋</h1>
       </header>
@@ -187,29 +219,60 @@ const DashboardPage = () => {
         </div>
 
         <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl md:rounded-[2.5rem] p-5 md:p-8 shadow-sm dark:shadow-slate-950/30 flex flex-col transition-all">
-          <h2 className="text-lg md:text-xl font-semibold text-slate-900 dark:text-white mb-6 md:mb-8 flex items-center gap-2.5">
-            <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div> Hệ thống căn
-          </h2>
-          <div className="space-y-3 md:space-y-4">
-            {villas.slice(0, 5).map((villa) => (
-              <div key={villa.id} onClick={() => router.push(`/villas/${villa.id}`)} className="flex gap-3 md:gap-4 items-center group cursor-pointer p-3 hover:bg-slate-55 dark:hover:bg-slate-800/40 rounded-xl md:rounded-2xl transition-all border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
-                <div className="overflow-hidden rounded-lg md:rounded-xl w-10 h-10 md:w-12 md:h-12 shadow-sm flex-shrink-0 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
-                  {villa.images && villa.images.length > 0 ? (
-                    <img src={getOptimizedImageUrl(villa.images[0], 150)} alt={villa.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-slate-200 dark:text-slate-700"><Users size={18} /></div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-sm truncate text-slate-900 dark:text-slate-200 leading-tight">{villa.name}</h3>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <span className={`w-1.5 h-1.5 rounded-full ${villa.status === 'active' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
-                    <span className="text-xs font-medium text-slate-400 dark:text-slate-555">{villa.status === 'active' ? 'Hoạt động' : 'Bảo trì'}</span>
-                  </div>
-                </div>
-                <ChevronRight size={16} className="text-slate-200 dark:text-slate-700 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors" />
+          <div className="flex items-center justify-between mb-6 md:mb-8">
+            <h2 className="text-lg md:text-xl font-semibold text-slate-900 dark:text-white flex items-center gap-2.5">
+              <div className="w-1.5 h-6 bg-indigo-500 rounded-full"></div> Hệ thống căn
+            </h2>
+            {villas.length > villasPerPage && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 mr-1">
+                  {villaPage + 1} / {Math.ceil(villas.length / villasPerPage)}
+                </span>
+                <button 
+                  disabled={villaPage === 0} 
+                  onClick={() => setVillaPage(p => p - 1)}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button 
+                  disabled={(villaPage + 1) * villasPerPage >= villas.length} 
+                  onClick={() => setVillaPage(p => p + 1)}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-30 transition-all cursor-pointer"
+                >
+                  <ChevronRight size={16} />
+                </button>
               </div>
-            ))}
+            )}
+          </div>
+          <div className="space-y-3 md:space-y-4 flex-1">
+            {Array.from({ length: villasPerPage }).map((_, i) => {
+              const villa = villas[villaPage * villasPerPage + i];
+              const isPlaceholder = !villa;
+              const displayVilla = villa || villas[0]; // Dùng căn đầu tiên làm mẫu để lấy đúng chiều cao
+              
+              if (!displayVilla) return null;
+
+              return (
+                <div key={isPlaceholder ? `empty-${i}` : displayVilla.id} onClick={() => !isPlaceholder && router.push(`/villas/${displayVilla.id}`)} className={`flex gap-3 md:gap-4 items-center p-3 rounded-xl md:rounded-2xl border border-transparent transition-all ${isPlaceholder ? 'invisible pointer-events-none' : 'group cursor-pointer hover:bg-slate-55 dark:hover:bg-slate-800/40 hover:border-slate-100 dark:hover:border-slate-800'}`}>
+                  <div className="overflow-hidden rounded-lg md:rounded-xl w-10 h-10 md:w-12 md:h-12 shadow-sm flex-shrink-0 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-800">
+                    {displayVilla.images && displayVilla.images.length > 0 ? (
+                      <img src={getOptimizedImageUrl(displayVilla.images[0], 150)} alt={displayVilla.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-200 dark:text-slate-700"><Users size={18} /></div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-sm truncate text-slate-900 dark:text-slate-200 leading-tight">{displayVilla.name}</h3>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <span className={`w-1.5 h-1.5 rounded-full ${displayVilla.status === 'active' ? 'bg-emerald-500' : 'bg-orange-500'}`}></span>
+                      <span className="text-xs font-medium text-slate-400 dark:text-slate-555">{displayVilla.status === 'active' ? 'Hoạt động' : 'Bảo trì'}</span>
+                    </div>
+                  </div>
+                  <ChevronRight size={16} className="text-slate-200 dark:text-slate-700 group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors" />
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Villa } from '@/types';
-import { Plus, MapPin, Users, Bed, Eye, Edit, ImageIcon, AlertCircle, Search, Loader2 } from 'lucide-react';
+import { Plus, MapPin, Users, Bed, Eye, Edit, ImageIcon, AlertCircle, Search, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { canManageVillas } from '@/lib/permissions';
@@ -16,6 +16,8 @@ const VillaListPage = () => {
   const canManage = canManageVillas(role);
   const [villas, setVillas] = useState<Villa[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(0);
+  const villasPerPage = 4; // Show 4 per page so it looks good on a 2x2 grid
 
   // Helper: find a detail value from villa.villa_details by matching label keywords
   const findDetailValue = (villa: Villa, keywords: string[]) => {
@@ -83,8 +85,9 @@ const VillaListPage = () => {
           <Loader2 className="text-orange-500 animate-spin" size={48} />
         </div>
       ) : villas.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {villas.map((villa) => (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+            {villas.slice(currentPage * villasPerPage, (currentPage + 1) * villasPerPage).map((villa) => (
             <div key={villa.id} className="bg-white dark:bg-slate-900 rounded-2xl md:rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-sm dark:shadow-slate-950/30 group hover:shadow-xl hover:shadow-slate-200/40 dark:hover:shadow-slate-950/50 transition-all duration-500 relative">
               
               <div className="absolute top-4 left-4 z-10">
@@ -166,7 +169,35 @@ const VillaListPage = () => {
                 </div>
               </div>
             </div>
-          ))}
+            ))}
+          </div>
+          
+          {Math.ceil(villas.length / villasPerPage) > 1 && (
+            <div className="flex items-center justify-between p-4 md:p-5 border border-slate-200 dark:border-slate-800 rounded-2xl md:rounded-3xl bg-white dark:bg-slate-900 shadow-sm dark:shadow-slate-950/30">
+              <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                Hiển thị {currentPage * villasPerPage + 1}-{Math.min((currentPage + 1) * villasPerPage, villas.length)} trong tổng {villas.length} căn
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                  disabled={currentPage === 0}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all cursor-pointer shadow-sm"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 px-3">
+                  {currentPage + 1} / {Math.ceil(villas.length / villasPerPage)}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(Math.ceil(villas.length / villasPerPage) - 1, p + 1))}
+                  disabled={currentPage >= Math.ceil(villas.length / villasPerPage) - 1}
+                  className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all cursor-pointer shadow-sm"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       ) : (
         <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-4 text-center">

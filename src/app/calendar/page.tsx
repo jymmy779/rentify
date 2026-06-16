@@ -86,8 +86,10 @@ const CalendarPageContent = () => {
         .select('*')
         .eq('villa_id', selectedVillaId)
         .eq('tenant_id', profile.tenant_id)
-        .not('status', 'in', '("cancelled", "deleted")')
-        .or(`check_in.lte.${lastDay},check_out.gte.${firstDay}`);
+        .neq('status', 'cancelled')
+        .neq('status', 'deleted')
+        .lte('check_in', lastDay)
+        .gte('check_out', firstDay);
 
       if (error) throw error;
       setBookings(data || []);

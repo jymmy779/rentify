@@ -16,6 +16,7 @@ const DashboardPage = () => {
   const [villas, setVillas] = useState<Villa[]>([]);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [villaPage, setVillaPage] = useState(0);
+  const [seeding, setSeeding] = useState(false);
   const villasPerPage = 3;
 
   useEffect(() => {
@@ -46,6 +47,79 @@ const DashboardPage = () => {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSeedData = async () => {
+    if (!profile?.tenant_id) return;
+    if (!confirm('Hành động này sẽ thêm đè dữ liệu demo (5 căn và 30 đơn) vào tài khoản của bạn. Bạn có chắc chắn không?')) return;
+    try {
+      setSeeding(true);
+      
+      const newVillas = [
+        { tenant_id: profile.tenant_id, name: 'Ocean View Villa', address: '123 Đường Biển, Vũng Tàu', description: 'Villa sang trọng view biển tuyệt đẹp', price: 5000000, images: ['https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'], amenities: ['Hồ bơi', 'BBQ', 'Karaoke', 'Bida'], status: 'active', bedrooms: 4, bathrooms: 4, capacity: { adults: 8, children: 4 } },
+        { tenant_id: profile.tenant_id, name: 'Forest Retreat', address: 'Rừng thông, Đà Lạt', description: 'Ẩn mình trong rừng thông yên bình', price: 3500000, images: ['https://images.unsplash.com/photo-1587061949409-02df41d5e562?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'], amenities: ['Lò sưởi', 'Sân vườn rộng', 'BBQ'], status: 'active', bedrooms: 3, bathrooms: 2, capacity: { adults: 6, children: 2 } },
+        { tenant_id: profile.tenant_id, name: 'Sunset Valley', address: 'Thung lũng Mường Hoa, Sapa', description: 'Ngắm hoàng hôn từ bể bơi vô cực', price: 8000000, images: ['https://images.unsplash.com/photo-1510798831971-661eb04b3739?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'], amenities: ['Bể bơi vô cực', 'Ăn sáng', 'Spa'], status: 'active', bedrooms: 5, bathrooms: 6, capacity: { adults: 10, children: 5 } },
+        { tenant_id: profile.tenant_id, name: 'Riverside Mansion', address: 'Khu biệt thự Thảo Điền, TP.HCM', description: 'Biệt thự ven sông sang trọng', price: 12000000, images: ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'], amenities: ['Hồ bơi', 'Bến du thuyền', 'Gym'], status: 'active', bedrooms: 6, bathrooms: 7, capacity: { adults: 12, children: 6 } },
+        { tenant_id: profile.tenant_id, name: 'Cozy Cabin', address: 'Sườn đồi, Tam Đảo', description: 'Cabin gỗ ấm cúng cho cặp đôi', price: 1500000, images: ['https://images.unsplash.com/photo-1449844908441-8829872d2607?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'], amenities: ['Lò sưởi', 'Bồn tắm gỗ', 'View núi'], status: 'active', bedrooms: 1, bathrooms: 1, capacity: { adults: 2, children: 0 } }
+      ];
+
+      const { data: insertedVillas, error: villaError } = await supabase.from('villas').insert(newVillas).select('id, price');
+      if (villaError || !insertedVillas) throw villaError;
+
+      const today = new Date();
+      const formatYMD = (d: Date) => d.toISOString().split('T')[0];
+      const newBookings: any[] = [];
+      const customers = ['Nguyễn Văn A', 'Trần Thị B', 'Lê Văn C', 'Phạm Thị D', 'Hoàng Văn E'];
+      
+      for (let i = 0; i < 30; i++) {
+        const villa = insertedVillas[Math.floor(Math.random() * insertedVillas.length)];
+        const createdDate = new Date(today);
+        createdDate.setDate(today.getDate() - Math.floor(Math.random() * 7));
+        
+        const statuses = ['completed', 'deposited', 'checked_in', 'cancelled'];
+        let status = statuses[Math.floor(Math.random() * statuses.length)];
+        
+        const checkIn = new Date(createdDate);
+        checkIn.setDate(createdDate.getDate() + Math.floor(Math.random() * 14) - 5);
+        const checkOut = new Date(checkIn);
+        checkOut.setDate(checkIn.getDate() + Math.floor(Math.random() * 3) + 1);
+
+        // Tạo 3-4 đơn Overdue cố ý để demo
+        if (i < 4) {
+          checkOut.setDate(today.getDate() - 1);
+          checkIn.setDate(checkOut.getDate() - 2);
+          status = 'deposited';
+        }
+
+        const totalAmount = villa.price * (Math.floor(Math.random() * 3) + 1);
+        newBookings.push({
+          tenant_id: profile.tenant_id,
+          villa_id: villa.id,
+          customer_name: customers[Math.floor(Math.random() * customers.length)],
+          customer_phone: '09' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0'),
+          check_in: formatYMD(checkIn),
+          check_out: formatYMD(checkOut),
+          adults: Math.floor(Math.random() * 4) + 2,
+          children: Math.floor(Math.random() * 3),
+          total_amount: totalAmount,
+          deposit_amount: Math.floor(totalAmount / 2),
+          status: status,
+          notes: 'Dữ liệu demo',
+          created_at: createdDate.toISOString()
+        });
+      }
+
+      const { error: bookingError } = await supabase.from('bookings').insert(newBookings);
+      if (bookingError) throw bookingError;
+
+      alert('Đã thêm dữ liệu Demo thành công!');
+      fetchDashboardData();
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi khi thêm dữ liệu demo');
+    } finally {
+      setSeeding(false);
     }
   };
 
@@ -169,8 +243,11 @@ const DashboardPage = () => {
         </div>
       )}
 
-      <header className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm dark:shadow-slate-950/20 transition-all duration-300">
+      <header className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 md:p-5 rounded-2xl md:rounded-3xl shadow-sm dark:shadow-slate-950/20 transition-all duration-300">
         <h1 className="text-xl md:text-2xl font-bold text-slate-900 dark:text-white">Báo cáo hôm nay 👋</h1>
+        <button onClick={handleSeedData} disabled={seeding} className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-95 disabled:opacity-50">
+          {seeding ? 'Đang tạo...' : 'Tạo Data Demo'}
+        </button>
       </header>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">

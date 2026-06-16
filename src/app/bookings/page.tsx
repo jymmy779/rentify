@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Booking, Villa } from '@/types';
-import { Search, Filter, Calendar, Loader2, ArrowLeft } from 'lucide-react';
+import { Search, Filter, Calendar, Loader2, ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNotification } from '@/context/NotificationContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -20,6 +20,8 @@ const BookingsListPageContent = () => {
   // Đọc filter từ URL params để giữ nguyên khi Back từ trang chi tiết
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
+  const [currentPage, setCurrentPage] = useState(0);
+  const bookingsPerPage = 10;
 
   // Cập nhật URL khi thay đổi filter (không tạo history entry mới)
   const updateUrl = useCallback((q: string, status: string) => {
@@ -33,12 +35,14 @@ const BookingsListPageContent = () => {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setSearchTerm(val);
+    setCurrentPage(0);
     updateUrl(val, statusFilter);
   };
 
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const val = e.target.value;
     setStatusFilter(val);
+    setCurrentPage(0);
     updateUrl(searchTerm, val);
   };
 
@@ -114,6 +118,9 @@ const BookingsListPageContent = () => {
     const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
+
+  const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+  const currentBookings = filteredBookings.slice(currentPage * bookingsPerPage, (currentPage + 1) * bookingsPerPage);
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -192,7 +199,7 @@ const BookingsListPageContent = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50 dark:divide-slate-800/40">
-                {filteredBookings.map((booking) => {
+                {currentBookings.map((booking) => {
                   const villa = villas.find(v => v.id === booking.villa_id);
                   const status = getStatusLabel(booking.status);
                   return (
@@ -232,6 +239,33 @@ const BookingsListPageContent = () => {
                 })}
               </tbody>
             </table>
+            
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between p-4 md:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20">
+                <span className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Hiển thị {currentPage * bookingsPerPage + 1}-{Math.min((currentPage + 1) * bookingsPerPage, filteredBookings.length)} trong tổng {filteredBookings.length} đơn
+                </span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(0, p - 1))}
+                    disabled={currentPage === 0}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all cursor-pointer shadow-sm"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-sm font-semibold text-slate-700 dark:text-slate-300 px-3">
+                    {currentPage + 1} / {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages - 1, p + 1))}
+                    disabled={currentPage >= totalPages - 1}
+                    className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 transition-all cursor-pointer shadow-sm"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="py-16 md:py-24 flex flex-col items-center justify-center space-y-3 text-center">

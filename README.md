@@ -109,9 +109,6 @@ npm run export
 | `npm run dev` | Dev server |
 | `npm run build` | Build production |
 | `npm run lint` | Kiểm tra lint |
-| `generate_report.py` | Sinh báo cáo Word |
-| `fill_report.py` | Điền dữ liệu vào template report |
-| `read_docx.py` | Đọc và extract nội dung file .docx |
 
 ## License
 

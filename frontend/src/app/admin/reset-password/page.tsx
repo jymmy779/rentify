@@ -93,7 +93,7 @@ export default function ResetPasswordPage() {
       await supabase.auth.signOut();
       
       setTimeout(() => {
-        router.push('/login');
+        router.push('/admin/login');
       }, 3000);
 
     } catch (err: any) {
@@ -137,7 +137,7 @@ export default function ResetPasswordPage() {
               <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed font-semibold">{errorMsg}</p>
             </div>
             <button
-              onClick={() => router.push('/login')}
+              onClick={() => router.push('/admin/login')}
               className="w-full py-3.5 bg-slate-900 hover:bg-orange-600 text-white rounded-2xl font-bold text-sm transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
             >
               <ArrowLeft size={16} /> Quay lại Đăng nhập

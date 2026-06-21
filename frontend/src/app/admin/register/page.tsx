@@ -7,8 +7,8 @@ export default function RegisterPageDisabled() {
   const router = useRouter();
 
   useEffect(() => {
-    // Chặn cứng và chuyển hướng ngay lập tức về trang đăng nhập
-    router.replace('/login');
+    // Tạm thời redirect sang login
+    router.replace('/admin/login');
   }, [router]);
 
   return null;

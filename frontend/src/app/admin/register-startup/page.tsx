@@ -59,7 +59,9 @@ export default function RegisterStartupPage() {
 
       if (res.success) {
         showToast('Đăng ký Startup thành công!', 'success');
-        router.push('/login');
+        setTimeout(() => {
+          router.push('/admin/login');
+        }, 500);
       } else {
         showToast(res.error || 'Có lỗi xảy ra khi đăng ký.', 'error');
       }

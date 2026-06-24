@@ -5,7 +5,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 const connectionString = process.env.DATABASE_URL;
 
 if (!connectionString) {
-  console.error('Lỗi: Chưa cấu hình DATABASE_URL trong file .env');
+  console.error('Error: DATABASE_URL is not configured in .env file');
   process.exit(1);
 }
 
@@ -17,9 +17,9 @@ export const prisma = new PrismaClient({ adapter });
 export const connect = async () => {
   try {
     await prisma.$connect();
-    console.log('Kết nối Database thành công!');
+    console.log('Database connection successful!');
   } catch (error) {
-    console.error('Lỗi kết nối Database:', error);
+    console.error('Database connection error:', error);
     process.exit(1);
   }
 };

@@ -53,7 +53,7 @@ export default function LoginPage() {
       const res = await login(loginEmail, loginPassword);
       if (res.success) {
         showToast('Đăng nhập thành công!', 'success');
-        router.push('/');
+        router.push('/admin');
       } else {
         showToast(res.error || 'Lỗi đăng nhập!', 'error');
       }
@@ -223,7 +223,7 @@ export default function LoginPage() {
 
               <div className="flex flex-col gap-2.5 pt-2">
                 <Link
-                  href="/register-startup"
+                  href="/admin/register-startup"
                   className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-3 rounded-2xl transition-all active:scale-95 flex items-center justify-center gap-2 text-xs border border-orange-200"
                 >
                   <Sparkles size={14} /> Đăng ký Startup / Chuỗi của bạn

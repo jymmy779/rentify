@@ -301,40 +301,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     if (loading) return;
 
-    const publicPaths = ['/login', '/register', '/register-startup', '/reset-password'];
+    const publicPaths = ['/admin/login', '/admin/register', '/admin/register-startup', '/admin/reset-password'];
     const isPublicPath = publicPaths.includes(pathname);
 
     if (!user) {
       if (!isPublicPath) {
-        router.push('/login');
+        router.push('/admin/login');
       }
     } else {
       // Đã đăng nhập
       if (isPublicPath) {
         // Nếu đang ở trang đặt lại mật khẩu thì tuyệt đối KHÔNG tự động chuyển hướng về trang chủ
-        if (pathname === '/reset-password') {
+        if (pathname === '/admin/reset-password') {
           return;
         }
         // Nếu đã đăng nhập mà được duyệt quyền rồi thì cho vào trang chủ
         if (profile && profile.role !== 'pending' && profile.role !== 'pending_owner') {
-          router.push('/');
+          router.push('/admin');
         }
       } else {
         // Đang ở các trang nội bộ, kiểm tra xem tài khoản có bị pending không
-        if (profile && profile.role === 'pending' && pathname !== '/pending') {
-          router.push('/login'); // Để AppLayout tự động xử lý view chờ duyệt
+        if (profile && profile.role === 'pending' && pathname !== '/admin/pending') {
+          router.push('/admin/login'); // Để AppLayout tự động xử lý view chờ duyệt
         }
         if (profile && profile.role === 'pending_owner' && pathname !== '/pending-startup') {
           // pending_owner sẽ được giữ hoặc redirect sang view chờ duyệt Startup (được xử lý trong AppLayout hoặc redirect)
         }
 
         // Chặn non-owner/non-admin vào các trang cấu hình nâng cao và quản trị nhân sự
-        const isProtectedAdminPath = pathname.startsWith('/settings/users') || pathname.startsWith('/villas/edit');
-        const isSettings = pathname === '/settings';
+        const isProtectedAdminPath = pathname.startsWith('/admin/settings/users') || pathname.startsWith('/admin/villas/edit');
+        const isSettings = pathname === '/admin/settings';
         
         if (isProtectedAdminPath && profile?.role !== 'admin' && profile?.role !== 'owner') {
           showToast('Bạn không có quyền truy cập trang quản trị này!', 'error');
-          router.push('/');
+          router.push('/admin');
         }
       }
     }
@@ -437,7 +437,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       setUser(null);
       setProfile(null);
-      router.replace('/login');
+      router.replace('/admin/login');
       showToast('Đăng xuất thành công!');
       void supabase.auth.signOut().catch((err) => {
         console.error(err);
@@ -482,7 +482,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const sendPasswordReset = async (email: string) => {
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined,
+        redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/admin/reset-password` : undefined,
       });
       if (error) throw error;
       return { success: true };

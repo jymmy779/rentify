@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, profile, role, loading, logout, startupName } = useAuth();
   const pathname = usePathname();
 
-  const isPublicPage = ['/login', '/register', '/register-startup'].includes(pathname);
+  const isPublicPage = ['/admin/login', '/admin/register', '/admin/register-startup', '/admin/reset-password'].includes(pathname);
 
   // Trang public không cần chờ auth bootstrap để render ngay.
   if (!user || isPublicPage) {

@@ -24,6 +24,16 @@ const DashboardPage = () => {
     }
   }, [profile]);
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'deposited': return { label: 'Đã cọc', color: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40' };
+      case 'checked_in': return { label: 'Đang ở', color: 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40' };
+      case 'completed': return { label: 'Hoàn thành', color: 'bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-900/40' };
+      case 'cancelled': return { label: 'Đã hủy', color: 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border-red-100 dark:border-red-900/40' };
+      default: return { label: 'Chờ cọc', color: 'bg-slate-50 dark:bg-slate-900 text-slate-400 dark:text-slate-500 border-slate-100 dark:border-slate-800' };
+    }
+  };
+
   const fetchDashboardData = async () => {
     if (!profile?.tenant_id) return;
     try {
@@ -38,7 +48,8 @@ const DashboardPage = () => {
         .from('bookings')
         .select('*')
         .eq('tenant_id', profile.tenant_id)
-        .neq('status', 'cancelled');
+        .neq('status', 'deleted')
+        .order('created_at', { ascending: false });
 
       setVillas(villasData || []);
       setAllBookings(allBookingsData || []);
@@ -52,6 +63,7 @@ const DashboardPage = () => {
   const overdueBookings = useMemo(() => {
     const todayStr = new Date().toISOString().split('T')[0];
     return allBookings.filter(booking => {
+      if (booking.status === 'cancelled') return false;
       // Quá hạn check-in (Đã cọc nhưng qua ngày check-in)
       const missedCheckIn = booking.status === 'deposited' && booking.check_in < todayStr;
       // Quá hạn check-out (Đã cọc/Đang ở nhưng qua ngày check-out)
@@ -62,11 +74,15 @@ const DashboardPage = () => {
   }, [allBookings]);
 
   const totalExpectedRevenue = useMemo(() => {
-    return allBookings.reduce((sum, booking) => sum + (Number(booking.total_amount) || 0), 0);
+    return allBookings.reduce((sum, booking) => {
+      if (booking.status === 'cancelled') return sum;
+      return sum + (Number(booking.total_amount) || 0);
+    }, 0);
   }, [allBookings]);
 
   const actualRevenue = useMemo(() => {
     return allBookings.reduce((sum, booking) => {
+      if (booking.status === 'cancelled') return sum;
       if (booking.status === 'deposited') return sum + (Number(booking.deposit_amount) || 0);
       return sum + (Number(booking.total_amount) || 0);
     }, 0);
@@ -84,7 +100,7 @@ const DashboardPage = () => {
     const totalPossibleNights = villas.length * daysInMonth;
     let bookedNights = 0;
 
-    allBookings.forEach(booking => {
+    allBookings.filter(b => b.status !== 'cancelled').forEach(booking => {
       const bIn = new Date(booking.check_in);
       const bOut = new Date(booking.check_out);
       
@@ -114,7 +130,7 @@ const DashboardPage = () => {
       const dateStr = d.toISOString().split('T')[0];
       const dayName = days[d.getDay()];
       const dayTotal = allBookings
-        .filter(b => b.created_at?.startsWith(dateStr))
+        .filter(b => b.status !== 'cancelled' && b.created_at?.startsWith(dateStr))
         .reduce((sum, b) => b.status === 'deposited' ? sum + (Number(b.deposit_amount) || 0) : sum + (Number(b.total_amount) || 0), 0);
       result.push({ day: dayName, amount: dayTotal });
     }
@@ -300,6 +316,7 @@ const DashboardPage = () => {
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/35">
               {allBookings.slice(0, 5).map((booking) => {
                 const villa = villas.find(v => v.id === booking.villa_id);
+                const statusInfo = getStatusLabel(booking.status);
                 return (
                   <tr key={booking.id} onClick={() => router.push(`/bookings/${booking.id}`)} className="group hover:bg-slate-55 dark:hover:bg-slate-800/30 transition-colors cursor-pointer">
                     <td className="py-4 pl-2">
@@ -308,12 +325,8 @@ const DashboardPage = () => {
                     <td className="py-4 text-slate-600 dark:text-slate-400 font-medium text-sm">{villa?.name}</td>
                     <td className="py-4 text-slate-500 dark:text-slate-450 font-medium text-[10px] md:text-xs">{booking.check_in} → {booking.check_out}</td>
                     <td className="py-4">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                        booking.status === 'deposited' 
-                          ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-900/40' 
-                          : 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 border-indigo-100 dark:border-indigo-900/40'
-                      }`}>
-                        {booking.status === 'deposited' ? 'Đã cọc' : 'Đang ở'}
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${statusInfo.color}`}>
+                        {statusInfo.label}
                       </span>
                     </td>
                     <td className="py-4 text-right font-semibold text-slate-900 dark:text-slate-100 pr-2 text-sm md:text-base">{Number(booking.total_amount).toLocaleString()}đ</td>

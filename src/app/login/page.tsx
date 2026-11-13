@@ -64,6 +64,13 @@ export default function LoginPage() {
     }
   };
 
+  // Điền sẵn tài khoản để xem nhanh giao diện demo admin.
+  const handleAdminDemo = () => {
+    setLoginEmail('admin@rentify.vn');
+    setLoginPassword('123456');
+    clearLoginErrors();
+  };
+
 
 
 
@@ -140,6 +147,14 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+                <button
+                  type="button"
+                  onClick={handleAdminDemo}
+                  disabled={loading}
+                  className="w-full rounded-2xl border border-orange-200 bg-orange-50 py-3 text-sm font-bold text-orange-700 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-orange-900/60 dark:bg-orange-950/30 dark:text-orange-300 dark:hover:bg-orange-950/50"
+                >
+                  Demo Admin · Điền tài khoản mẫu
+                </button>
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Email tài khoản</label>
                   <div className="relative group">
